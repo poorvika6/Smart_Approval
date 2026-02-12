@@ -31,7 +31,7 @@ const AdminAttendance = () => {
 
   const fetchUsers = async (role) => {
     try {
-      const res = await fetchWrapper(`http://localhost:5000/api/admin/users?role=${role}`);
+      const res = await fetchWrapper(`https://smart-approval.onrender.com/api/admin/users?role=${role}`);
       if (!res.ok) {
         setUserMessage(res.data.message || "Failed to load users");
         return;
@@ -60,7 +60,7 @@ const AdminAttendance = () => {
   const handleDelete = async (id, role) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
-      const res = await fetchWrapper(`http://localhost:5000/api/admin/users/${id}`, { method: "DELETE" });
+      const res = await fetchWrapper(`https://smart-approval.onrender.com/api/admin/users/${id}`, { method: "DELETE" });
       if (!res.ok) {
         setUserMessage(res.data.message || "Delete failed");
         return;
@@ -94,7 +94,7 @@ const AdminAttendance = () => {
     else body.id = userObj._id;
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/attendance", {
+      const res = await fetch("https://smart-approval.onrender.com/api/admin/attendance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -120,7 +120,7 @@ const AdminAttendance = () => {
   // ---------------- ATTENDANCE ----------------
   const submitAttendance = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/attendance", {
+      const res = await fetch("https://smart-approval.onrender.com/api/admin/attendance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -149,7 +149,7 @@ const AdminAttendance = () => {
   // ---------------- GENERAL PERMISSION ----------------
   const submitGP = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/general-permission", {
+      const res = await fetch("https://smart-approval.onrender.com/api/admin/general-permission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -16,7 +16,7 @@ app.use(express.json());
 // ✅ PROPER CORS CONFIG (PATCH FIXED)
 app.use(
   cors({
-    origin: "http://localhost:5173", // frontend URL
+    origin: "http://localhost:5174", // frontend URL
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
