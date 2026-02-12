@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useEffect } from "react";
+import BASE_URL from "../config/api";
+
 
 const AdminAttendance = () => {
   // Attendance states
@@ -30,7 +32,7 @@ const AdminAttendance = () => {
 
   const fetchUsers = async (role) => {
     try {
-      const res = await fetchWrapper(`http://localhost:5000/api/admin/users?role=${role}`);
+      const res = await fetchWrapper(`${BASE_URL}/api/admin/users?role=${role}`);
       if (!res.ok) {
         setUserMessage(res.data.message || "Failed to load users");
         return;

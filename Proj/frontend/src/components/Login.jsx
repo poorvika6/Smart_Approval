@@ -1,6 +1,7 @@
 import { Link,useNavigate } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import { useState } from "react";
+import BASE_URL from "../config/api";
 
 const Login = () => {
     const navigate = useNavigate(); 
@@ -11,7 +12,7 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch("${BASE_URL}/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
