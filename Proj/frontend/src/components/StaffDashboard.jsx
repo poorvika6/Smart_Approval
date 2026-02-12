@@ -10,7 +10,7 @@ const StaffDashboard = () => {
   useEffect(() => {
     if (!staff?._id) return;
 
-    fetch(`https://smart-approval.onrender.com/api/leave/staff/${staff._id}`)
+    fetch(`http://localhost:5000/api/leave/staff/${staff._id}`)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (!res.ok) {
@@ -28,7 +28,7 @@ const StaffDashboard = () => {
 
   /* ================= APPROVE ================= */
   const approveLeave = async (id) => {
-    await fetch(`https://smart-approval.onrender.com/api/leave/approve/${id}`, {
+    await fetch(`http://localhost:5000/api/leave/approve/${id}`, {
       method: "PATCH",
     });
 
@@ -43,7 +43,7 @@ const StaffDashboard = () => {
       return;
     }
 
-    await fetch(`https://smart-approval.onrender.com/api/leave/reject/${id}`, {
+    await fetch(`http://localhost:5000/api/leave/reject/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
