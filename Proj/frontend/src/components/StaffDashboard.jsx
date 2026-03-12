@@ -3,11 +3,63 @@ import { useEffect, useState } from "react";
 const StaffDashboard = () => {
   const [leaves, setLeaves] = useState([]);
   const [rejectReasons, setRejectReasons] = useState({});
+  const [staff, setStaff] = useState(null);
 
-  const staff = JSON.parse(localStorage.getItem("user"));
+  // Load staff from localStorage on mount and whenever the window comes into focus
+  useEffect(() => {
+    const loadStaff = () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (user && user.role === "staff") {
+        setStaff(user);
+      } else {
+        setStaff(null);
+      }
+    };
+
+    loadStaff();
+    
+    // Listen for storage changes (when localStorage is updated)
+    window.addEventListener("storage", loadStaff);
+    window.addEventListener("focus", loadStaff);
+    
+    return () => {
+      window.removeEventListener("storage", loadStaff);
+      window.removeEventListener("focus", loadStaff);
+    };
+  }, []);
 
   /* ================= FETCH STAFF LEAVES ================= */
   useEffect(() => {
+    if (!staff?._id) return;
+
+    // Fetch leaves immediately
+    const loadLeaves = () => {
+      fetch(`http://localhost:5000/api/leave/staff/${staff._id}`)
+        .then(async (res) => {
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            console.error("Failed to load staff leaves:", data?.message || res.status);
+            setLeaves([]);
+            return;
+          }
+          setLeaves(Array.isArray(data) ? data : []);
+        })
+        .catch((err) => {
+          console.error(err);
+          setLeaves([]);
+        });
+    };
+
+    loadLeaves();
+
+    // Poll for updates every 2 seconds to keep the list fresh
+    const interval = setInterval(loadLeaves, 2000);
+    
+    return () => clearInterval(interval);
+  }, [staff?._id]);
+
+  /* ================= FETCH LEAVES ================= */
+  const fetchLeaves = () => {
     if (!staff?._id) return;
 
     fetch(`http://localhost:5000/api/leave/staff/${staff._id}`)
@@ -24,16 +76,28 @@ const StaffDashboard = () => {
         console.error(err);
         setLeaves([]);
       });
-  }, [staff?._id]);
+  };
 
   /* ================= APPROVE ================= */
   const approveLeave = async (id) => {
-    await fetch(`http://localhost:5000/api/leave/approve/${id}`, {
-      method: "PATCH",
-    });
+    try {
+      const res = await fetch(`http://localhost:5000/api/leave/approve/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
 
-    // remove from staff dashboard (only pending list)
-    setLeaves(prev => prev.filter(l => l._id !== id));
+      if (res.ok) {
+        // remove from staff dashboard (only pending list)
+        setLeaves(prev => prev.filter(l => l._id !== id));
+        alert("Leave approved successfully");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to approve leave");
+      }
+    } catch (err) {
+      console.error("Approve error:", err);
+      alert("Error approving leave");
+    }
   };
 
   /* ================= REJECT ================= */
@@ -43,19 +107,49 @@ const StaffDashboard = () => {
       return;
     }
 
-    await fetch(`http://localhost:5000/api/leave/reject/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rejectionReason: rejectReasons[id],
-      }),
-    });
+    try {
+      const res = await fetch(`http://localhost:5000/api/leave/reject/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rejectionReason: rejectReasons[id],
+        }),
+      });
 
-    // remove from staff dashboard (only pending list)
-    setLeaves(prev => prev.filter(l => l._id !== id));
+      if (res.ok) {
+        // remove from staff dashboard (only pending list)
+        setLeaves(prev => prev.filter(l => l._id !== id));
+        setRejectReasons(prev => {
+          const updated = { ...prev };
+          delete updated[id];
+          return updated;
+        });
+        alert("Leave rejected successfully");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to reject leave");
+      }
+    } catch (err) {
+      console.error("Reject error:", err);
+      alert("Error rejecting leave");
+    }
   };
 
-  if (!staff) return null;
+  if (!staff) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg mb-4">Session expired. Please log in again.</p>
+          <a
+            href="/login"
+            className="bg-teal-500 text-black px-4 py-2 rounded hover:bg-teal-400 inline-block"
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-900 min-h-screen text-white">

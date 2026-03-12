@@ -9,6 +9,7 @@ const Signup = () => {
   const [name, setName] = useState("");
   const [registerNo, setRegisterNo] = useState("");
   const [facultyId, setFacultyId] = useState("");
+  const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +29,7 @@ const Signup = () => {
       role,
       registerNo: role === "student" ? registerNo : undefined,
       facultyId: role === "staff" ? facultyId : undefined,
+      phone: role === "staff" ? phone : undefined,
       department,
     };
 
@@ -52,6 +54,7 @@ const Signup = () => {
     department: data.user.department,
     registerNo: data.user.registerNo,
     facultyId: data.user.facultyId,
+    phone: data.user.phone,
   })
 );
  // Save user info
@@ -136,6 +139,18 @@ const Signup = () => {
                 placeholder="Faculty ID"
                 value={facultyId}
                 onChange={(e) => setFacultyId(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-[#020617] border border-gray-700 rounded-lg 
+              focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
+                required
+              />
+            )}
+
+            {role === "staff" && (
+              <input
+                type="tel"
+                placeholder="Phone Number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-[#020617] border border-gray-700 rounded-lg 
               focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
                 required

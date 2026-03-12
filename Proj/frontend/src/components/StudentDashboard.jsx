@@ -24,6 +24,9 @@ const StudentDashboard = () => {
     timeOption: "",
   });
   const [leaveError, setLeaveError] = useState("");
+  const [applyingLeave, setApplyingLeave] = useState(false);
+  const [editingLeaveId, setEditingLeaveId] = useState(null);
+  const [editFormVisible, setEditFormVisible] = useState(false);
 
   const todayStr = new Date().toISOString().split("T")[0];
   const _tomorrow = new Date();
@@ -32,44 +35,73 @@ const StudentDashboard = () => {
 
   // Load user from localStorage and fetch fresh data from API
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const localUser = JSON.parse(storedUser);
-      setUser(localUser);
-      // Fetch fresh user data from backend to get latest attendance
-      const fetchFreshUser = async (id) => {
-        try {
-          const res = await fetch(`http://localhost:5000/api/auth/user/${id}`);
-          const data = await res.json();
-          setUser(prev => ({ ...prev, ...data }));
-          localStorage.setItem("user", JSON.stringify({ ...localUser, ...data }));
-        } catch (err) {
-          console.error("Failed to fetch fresh user data:", err);
+    const loadUser = () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const localUser = JSON.parse(storedUser);
+        // Only set if it's a student
+        if (localUser?.role === "student") {
+          setUser(localUser);
+        } else {
+          setUser(null);
         }
-      };
+      } else {
+        setUser(null);
+      }
+    };
 
-      fetchFreshUser(localUser._id);
-
-      // Check if there are any staff in the student's department
-      const checkStaff = async () => {
-        try {
-          const res = await fetch(`http://localhost:5000/api/admin/users?role=staff`);
-          const data = await res.json();
-          const staffInDept = (data || []).filter(s => s.department === localUser.department);
-          setStaffAvailable(staffInDept.length > 0);
-        } catch (err) {
-          console.error("Failed to check staff availability:", err);
-          setStaffAvailable(true); // fail open
-        }
-      };
-
-      checkStaff();
-
-      // Poll user data so admin updates reflect automatically (faster)
-      const poll = setInterval(() => fetchFreshUser(localUser._id), 2000);
-      return () => clearInterval(poll);
-    }
+    loadUser();
+    
+    // Listen for storage changes
+    window.addEventListener("storage", loadUser);
+    window.addEventListener("focus", loadUser);
+    
+    return () => {
+      window.removeEventListener("storage", loadUser);
+      window.removeEventListener("focus", loadUser);
+    };
   }, []);
+
+  // Fetch fresh user data when user changes
+  useEffect(() => {
+    if (!user?._id) return;
+    
+    const fetchFreshUser = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/auth/user/${user._id}`);
+        const data = await res.json();
+        setUser(prev => ({ ...prev, ...data }));
+        localStorage.setItem("user", JSON.stringify({ ...user, ...data }));
+      } catch (err) {
+        console.error("Failed to fetch fresh user data:", err);
+      }
+    };
+
+    fetchFreshUser();
+
+    // Poll user data (faster updates)
+    const poll = setInterval(fetchFreshUser, 2000);
+    return () => clearInterval(poll);
+  }, [user?._id]);
+
+  // Check if there are any staff in the student's department
+  useEffect(() => {
+    if (!user?._id) return;
+
+    const checkStaff = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/admin/users?role=staff`);
+        const data = await res.json();
+        const staffInDept = (data || []).filter(s => s.department === user.department);
+        setStaffAvailable(staffInDept.length > 0);
+      } catch (err) {
+        console.error("Failed to check staff availability:", err);
+        setStaffAvailable(true);
+      }
+    };
+
+    checkStaff();
+  }, [user?.department]);
 
   // Fetch general permission status
   useEffect(() => {
@@ -122,6 +154,7 @@ const StudentDashboard = () => {
   }, [leaveForm.leaveType]);
 
   const applyLeave = async () => {
+    setApplyingLeave(true);
     const { leaveType, fromDate, toDate, fromTime, toTime, reason, timeOption } = leaveForm;
 
     // Enforce attendance rule: cannot apply if attendance < 80 unless GP is enabled
@@ -200,13 +233,19 @@ const StudentDashboard = () => {
       });
 
       const data = await response.json();
-      if (!response.ok) return alert(data.message);
+      if (!response.ok) {
+        setLeaveError(data.message || "Failed to apply for leave");
+        setApplyingLeave(false);
+        return;
+      }
       setLeaveError("");
       setLeaveFormVisible(false);
       setLeaveForm({ fromDate: "", toDate: "", fromTime: "", toTime: "", reason: "", leaveType: "sick", timeOption: "" });
       fetchStudentData();
       alert(data.message);
+      setApplyingLeave(false);
     } catch (err) {
+      setApplyingLeave(false);
       alert("Server error");
       console.error("APPLY LEAVE ERROR:", err);
     }
@@ -238,6 +277,157 @@ const StudentDashboard = () => {
       alert(data.message);
     } catch (err) {
       setLeaveError("Server error");
+    }
+  };
+
+  const startEditLeave = (leave) => {
+    setEditingLeaveId(leave._id);
+    setLeaveForm({
+      fromDate: leave.fromDate ? new Date(leave.fromDate).toISOString().split("T")[0] : "",
+      toDate: leave.toDate ? new Date(leave.toDate).toISOString().split("T")[0] : "",
+      fromTime: leave.fromTime || "",
+      toTime: leave.toTime || "",
+      reason: leave.reason || "",
+      leaveType: leave.leaveType || "sick",
+      timeOption: leave.timeOption || "",
+    });
+    setLeaveError("");
+    setEditFormVisible(true);
+  };
+
+  const saveEditLeave = async () => {
+    setApplyingLeave(true);
+    const { leaveType, fromDate, toDate, fromTime, toTime, reason, timeOption } = leaveForm;
+
+    // Similar validations as applyLeave
+    if (user && user.attendancePercentage < 80 && !generalPermissionEnabled) {
+      alert("Your attendance is below 80% — you cannot edit leave unless General Permission is enabled.");
+      setApplyingLeave(false);
+      return;
+    }
+
+    if (leaveType !== "sick") {
+      const from = new Date(fromDate);
+      const _tom = new Date();
+      _tom.setDate(_tom.getDate() + 1);
+      _tom.setHours(0,0,0,0);
+      if (from < _tom) {
+        setLeaveError("Leave must start from tomorrow (sick leave can start today)");
+        setApplyingLeave(false);
+        return;
+      }
+    }
+
+    if (leaveType === "emergency") {
+      if (!fromDate || !toDate || !fromTime || !toTime) {
+        alert("All fields are required for Emergency Leave");
+        setApplyingLeave(false);
+        return;
+      }
+      if (fromDate !== toDate) {
+        alert("Emergency leave must start and end on the same day");
+        setApplyingLeave(false);
+        return;
+      }
+
+      const [startH, startM] = fromTime.split(":").map(Number);
+      const [endH, endM] = toTime.split(":").map(Number);
+
+      let start = new Date(fromDate);
+      start.setHours(startH, startM, 0, 0);
+
+      let end = new Date(toDate);
+      end.setHours(endH, endM, 0, 0);
+
+      if (end <= start) end.setDate(end.getDate() + 1);
+
+      const diffHours = (end - start) / (1000 * 60 * 60);
+      if (diffHours > 12) {
+        alert("Emergency leave cannot exceed 12 hours");
+        setApplyingLeave(false);
+        return;
+      }
+    }
+
+    if (["special", "od"].includes(leaveType)) {
+      if (!fromDate || !toDate || !fromTime || !toTime || !reason) {
+        alert("All fields are required for Special/OD leave");
+        setApplyingLeave(false);
+        return;
+      }
+    }
+
+    if (leaveType === "sick") {
+      if (!timeOption) {
+        setLeaveError("Select time option (AM/PM/Full Day) for Sick Leave");
+        setApplyingLeave(false);
+        return;
+      }
+      if (!reason) {
+        setLeaveError("Reason required for Sick Leave");
+        setApplyingLeave(false);
+        return;
+      }
+    }
+
+    const payload = {
+      leaveType,
+      reason: leaveType !== "general" ? reason : "General Permission Leave",
+      fromDate: leaveType !== "general" ? fromDate : undefined,
+      toDate: leaveType !== "general" ? toDate : undefined,
+      fromTime: ["special", "od", "emergency"].includes(leaveType) ? fromTime : undefined,
+      toTime: ["special", "od", "emergency"].includes(leaveType) ? toTime : undefined,
+      ...(leaveType === "sick" && { timeOption }),
+    };
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/leave/${editingLeaveId}/edit`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setLeaveError(data.message || "Failed to edit leave");
+        setApplyingLeave(false);
+        return;
+      }
+      setLeaveError("");
+      setEditFormVisible(false);
+      setEditingLeaveId(null);
+      setLeaveForm({ fromDate: "", toDate: "", fromTime: "", toTime: "", reason: "", leaveType: "sick", timeOption: "" });
+      fetchStudentData();
+      alert("Leave updated successfully");
+      setApplyingLeave(false);
+    } catch (err) {
+      setApplyingLeave(false);
+      alert("Server error");
+      console.error("EDIT LEAVE ERROR:", err);
+    }
+  };
+
+  const deleteLeave = async (leaveId) => {
+    if (!window.confirm("Are you sure you want to delete this leave? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/leave/${leaveId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.ok) {
+        fetchStudentData();
+        alert("Leave deleted successfully");
+      } else {
+        const data = await response.json();
+        alert(data.message || "Failed to delete leave");
+      }
+    } catch (err) {
+      console.error("DELETE LEAVE ERROR:", err);
+      alert("Error deleting leave");
     }
   };
 
@@ -275,7 +465,7 @@ const StudentDashboard = () => {
 
           <div>
             <button
-              disabled={(!staffAvailable && !generalPermissionEnabled) || (attendancePercent < 80 && !generalPermissionEnabled)}
+              disabled={(!staffAvailable && !generalPermissionEnabled) || (attendancePercent < 80 && !generalPermissionEnabled) || applyingLeave}
               onClick={() => {
                 if ((!staffAvailable && !generalPermissionEnabled) || (attendancePercent < 80 && !generalPermissionEnabled)) return;
                 setLeaveFormVisible(!leaveFormVisible);
@@ -286,7 +476,7 @@ const StudentDashboard = () => {
                   : "bg-teal-500 text-black hover:bg-teal-400"
               }`}
             >
-              Apply Leave
+              {applyingLeave ? "Applying..." : "Apply Leave"}
             </button>
 
             {!staffAvailable && !generalPermissionEnabled && (
@@ -368,15 +558,82 @@ const StudentDashboard = () => {
                   <option value="od">OD</option>
                 </select>
 
-                <button onClick={applyLeave} className="mt-4 bg-teal-500 text-black px-4 py-2 rounded hover:bg-teal-400">
-                  Submit
+                <button onClick={applyLeave} className="mt-4 bg-teal-500 text-black px-4 py-2 rounded hover:bg-teal-400" disabled={applyingLeave}>
+                  {applyingLeave ? "Applying..." : "Submit"}
                 </button>
               </>
             )}
           </div>
         )}
 
-        <LeaveSection title="Pending Requests" data={pendingRequests} color="yellow" onClick={openLeaveDetails} />
+        {/* Edit Leave Form */}
+        {(editFormVisible && editingLeaveId) && (
+          <div className="bg-gray-800 px-4 py-2 rounded-xl mb-6">
+            <h2 className="font-semibold mb-3">Edit Leave</h2>
+
+            {leaveError && <p className="text-sm text-red-400 mb-2">{leaveError}</p>}
+
+            <div className="grid grid-cols-2 gap-3">
+              {leaveForm.leaveType !== "general" && (
+                <input
+                  type="date"
+                  name="fromDate"
+                  value={leaveForm.fromDate}
+                  onChange={handleChange}
+                  className="p-2 bg-gray-700 rounded"
+                  min={leaveForm.leaveType === "sick" ? todayStr : tomorrowStr}
+                />
+              )}
+              {["special", "od", "emergency"].includes(leaveForm.leaveType) && (
+                <input
+                  type="date"
+                  name="toDate"
+                  value={leaveForm.toDate}
+                  onChange={handleChange}
+                  className="p-2 bg-gray-700 rounded"
+                  min={leaveForm.fromDate || (leaveForm.leaveType === "sick" ? todayStr : tomorrowStr)}
+                />
+              )}
+              {["special", "od", "emergency"].includes(leaveForm.leaveType) && (
+                <>
+                  <input type="time" name="fromTime" value={leaveForm.fromTime} onChange={handleChange} className="p-2 bg-gray-700 rounded" />
+                  <input type="time" name="toTime" value={leaveForm.toTime} onChange={handleChange} className="p-2 bg-gray-700 rounded" />
+                </>
+              )}
+            </div>
+
+            {leaveForm.leaveType === "sick" && (
+              <select name="timeOption" value={leaveForm.timeOption} onChange={handleChange} className="w-full mt-3 p-2 bg-gray-700 rounded">
+                <option value="">Select Time</option>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+                <option value="Full Day">Full Day</option>
+              </select>
+            )}
+
+            {leaveForm.leaveType !== "general" && (
+              <textarea name="reason" placeholder="Reason" value={leaveForm.reason} onChange={handleChange} className="w-full mt-3 p-2 bg-gray-700 rounded" />
+            )}
+
+            <select name="leaveType" value={leaveForm.leaveType} onChange={handleChange} className="w-full mt-3 p-2 bg-gray-700 rounded">
+              <option value="sick">Sick</option>
+              <option value="emergency">Emergency</option>
+              <option value="special">Special</option>
+              <option value="od">OD</option>
+            </select>
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={saveEditLeave} className="bg-teal-500 text-black px-4 py-2 rounded hover:bg-teal-400" disabled={applyingLeave}>
+                {applyingLeave ? "Saving..." : "Save Changes"}
+              </button>
+              <button onClick={() => { setEditFormVisible(false); setEditingLeaveId(null); }} className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        <LeaveSection title="Pending Requests" data={pendingRequests} color="yellow" onClick={openLeaveDetails} onEdit={startEditLeave} onDelete={deleteLeave} isPending={true} />
         <LeaveSection title="Approved Requests" data={approvedRequests} color="green" onClick={openLeaveDetails} />
         <LeaveSection title="Rejected Requests" data={rejectedRequests} color="orange" onClick={openLeaveDetails} />
       </div>
@@ -386,17 +643,49 @@ const StudentDashboard = () => {
   );
 };
 
-const LeaveSection = ({ title, data, color, onClick }) => (
+const LeaveSection = ({ title, data, color, onClick, onEdit, onDelete, isPending }) => (
   <div className="mb-5">
     <h2 className="font-semibold mb-2">{title}</h2>
     <div className="bg-gray-800 rounded p-3">
       {data.length === 0 ? <p className="text-gray-400">No records</p> :
         data.map(req => (
-          <div key={req._id} onClick={() => onClick(req._id)} className="flex justify-between py-2 px-2 rounded cursor-pointer hover:bg-gray-700">
-            <span>{req.reason || "(No reason)"} ({req.leaveType})</span>
-            <span className={`font-semibold ${color === "green" ? "text-green-400" : color === "orange" ? "text-orange-400" : "text-yellow-400"}`}>
-              {formatStatus(req.status)}
-            </span>
+          <div key={req._id} className="flex justify-between items-center py-3 px-2 rounded hover:bg-gray-700 border-b border-gray-700 last:border-b-0">
+            <div className="flex-1 cursor-pointer" onClick={() => onClick(req._id)}>
+              <span className="block">{req.reason || "(No reason)"} ({req.leaveType})</span>
+              {isPending && req.staffId && (
+                <span className="block text-xs text-gray-400 mt-1">
+                  Assigned to: <span className="text-gray-300">{req.staffId.name}</span>
+                  {req.staffId.phone && <span className="text-gray-300"> | {req.staffId.phone}</span>}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {isPending && onEdit && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(req);
+                    }}
+                    className="text-sm px-2 py-1 bg-teal-500 text-black hover:bg-teal-400 rounded"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(req._id);
+                    }}
+                    className="text-sm px-2 py-1 bg-red-600 hover:bg-red-500 rounded"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+              <span className={`font-semibold ${color === "green" ? "text-green-400" : color === "orange" ? "text-orange-400" : "text-yellow-400"}`}>
+                {formatStatus(req.status)}
+              </span>
+            </div>
           </div>
         ))
       }

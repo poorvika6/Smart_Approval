@@ -31,13 +31,15 @@ const Login = () => {
     department: data.user.department,
     registerNo: data.user.registerNo,
     facultyId: data.user.facultyId,
+    phone: data.user.phone,
     attendancePercentage: data.user.attendancePercentage,
   })
 );
  // Save user info
 
       // Redirect based on role
-      if (data.user.role === "student") navigate("/student-dashboard");
+      if (data.user.role === "admin") navigate("/admin-dashboard");
+      else if (data.user.role === "student") navigate("/student-dashboard");
       else if (data.user.role === "staff") navigate("/staff-dashboard");
     } catch (err) {
       console.error("Login failed:", err.message);

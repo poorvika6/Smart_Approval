@@ -49,16 +49,24 @@ const LeaveDetails = ({ leave, onClose }) => {
               value={new Date(leave.toDate).toLocaleString()}
             />
 
-            <Info label="Gate Out" value={leave.fromTime} />
-            <Info label="Gate In" value={leave.toTime} />
+            {leave.leaveType === "sick" ? (
+              <Info label="Time Option" value={leave.timeOption || "Full Day"} />
+            ) : (
+              <>
+                <Info label="Gate Out" value={leave.fromTime} />
+                <Info label="Gate In" value={leave.toTime} />
+              </>
+            )}
 
-            <Info
-              label="Duration"
-              value={`${Math.ceil(
-                (new Date(leave.toDate) - new Date(leave.fromDate)) /
-                  (1000 * 60 * 60 * 24)
-              )} days`}
-            />
+            {leave.leaveType !== "sick" && (
+              <Info
+                label="Duration"
+                value={`${Math.ceil(
+                  (new Date(leave.toDate) - new Date(leave.fromDate)) /
+                    (1000 * 60 * 60 * 24)
+                )} days`}
+              />
+            )}
 
             <Info label="Status">
               <span className={`px-3 py-1 rounded-full text-white ${statusColor}`}>
@@ -77,6 +85,22 @@ const LeaveDetails = ({ leave, onClose }) => {
             </p>
           </div>
 
+          {/* Timestamps */}
+          <div className="mt-5 pt-4 border-t border-gray-700">
+            <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-xs text-gray-400">
+              <div>
+                <p className="text-gray-500">Applied On</p>
+                <p>{leave.createdAt ? new Date(leave.createdAt).toLocaleString() : "N/A"}</p>
+              </div>
+              {leave.updatedAt && leave.createdAt !== leave.updatedAt && (
+                <div>
+                  <p className="text-gray-500">Last Edited</p>
+                  <p>{new Date(leave.updatedAt).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Approval Status */}
           <h3 className="font-semibold mt-6 mb-3 text-gray-200">
             Approval Status
@@ -87,6 +111,7 @@ const LeaveDetails = ({ leave, onClose }) => {
             <ApprovalCard
               title="Faculty"
               name={leave.staffId.name}
+              phone={leave.staffId.phone}
               status={leave.status}
             />
           )}
@@ -118,13 +143,16 @@ const Info = ({ label, value, children }) => (
   </div>
 );
 
-const ApprovalCard = ({ title, name, status }) => (
+const ApprovalCard = ({ title, name, phone, status }) => (
   <div className="border border-gray-700 rounded-lg p-4 flex justify-between items-center mb-3 bg-gray-800">
     <div>
       <p className="font-semibold">{title}</p>
       <p className="text-sm text-gray-400">{name}</p>
+      {(status === "pending" || status === "approved" || status === "rejected") && phone && (
+        <p className="text-sm text-gray-500">Phone: {phone}</p>
+      )}
       <p className="text-sm text-gray-500">
-        Approved by: {name}
+        {status === "pending" ? "Assigned to" : "Approved by"}: {name}
       </p>
     </div>
 

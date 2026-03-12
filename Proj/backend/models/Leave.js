@@ -16,7 +16,10 @@ const leaveSchema = new mongoose.Schema(
       type: String,
       
     },
-    fromDate: { type: Date, required: true },
+    fromDate: { 
+      type: Date, 
+      required: function() { return this.leaveType !== "general"; } 
+    },
     toDate: { type: Date },
     fromTime: { type: String }, // for emergency & special/od
     toTime: { type: String },   // for emergency & special/od

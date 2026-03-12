@@ -32,6 +32,12 @@ const userSchema = new mongoose.Schema(
         return this.role === "staff";
       },
     },
+    phone: {
+      type: String,
+      required: function () {
+        return this.role === "staff";
+      },
+    },
     department: {
       type: String,
       required: true,
