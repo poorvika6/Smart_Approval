@@ -16,10 +16,7 @@ app.use(express.json());
 // ✅ PROPER CORS CONFIG (PATCH FIXED)
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://your-frontend-url.com"
-    ],// frontend URL
+    origin: "http://localhost:5173", // frontend URL
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -37,7 +34,7 @@ app.use("/api/admin/general-permission", generalPermissionRoutes);
 
 /* ---------------- DATABASE ---------------- */
 
-const mongoURL = process.env.MONGO_URL;
+const mongoURL = "mongodb://127.0.0.1:27017/smart";
 
 mongoose
   .connect(mongoURL)
@@ -46,7 +43,7 @@ mongoose
 
 /* ---------------- SERVER ---------------- */
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on http://localhost:${PORT}`)
 );
