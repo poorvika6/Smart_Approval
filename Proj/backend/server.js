@@ -16,7 +16,7 @@ app.use(express.json());
 // ✅ PROPER CORS CONFIG (PATCH FIXED)
 app.use(
   cors({
-    origin: "https://smart-approval-n1d7-o7tmwvscx-poorvikas-projects-126d0542.vercel.app", // frontend URL
+    origin: "https://smart-approval-cax7eyk7e-poorvikas-projects-126d0542.vercel.app", // frontend URL
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
