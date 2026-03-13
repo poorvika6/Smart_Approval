@@ -34,7 +34,7 @@ const StaffDashboard = () => {
 
     // Fetch leaves immediately
     const loadLeaves = () => {
-      fetch(`http://localhost:5000/api/leave/staff/${staff._id}`)
+      fetch(`https://smart-approval.onrender.com/api/leave/staff/${staff._id}`)
         .then(async (res) => {
           const data = await res.json().catch(() => null);
           if (!res.ok) {
@@ -62,7 +62,7 @@ const StaffDashboard = () => {
   const fetchLeaves = () => {
     if (!staff?._id) return;
 
-    fetch(`http://localhost:5000/api/leave/staff/${staff._id}`)
+    fetch(`https://smart-approval.onrender.com/api/leave/staff/${staff._id}`)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (!res.ok) {
@@ -81,7 +81,7 @@ const StaffDashboard = () => {
   /* ================= APPROVE ================= */
   const approveLeave = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/leave/approve/${id}`, {
+      const res = await fetch(`https://smart-approval.onrender.com/api/leave/approve/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
       });
@@ -108,7 +108,7 @@ const StaffDashboard = () => {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/leave/reject/${id}`, {
+      const res = await fetch(`https://smart-approval.onrender.com/api/leave/reject/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
