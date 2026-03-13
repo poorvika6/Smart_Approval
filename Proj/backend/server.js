@@ -13,12 +13,13 @@ const app = express();
 // Parse JSON body
 app.use(express.json());
 
-// ✅ PROPER CORS CONFIG (PATCH FIXED)
+// ✅ CORS for localhost development
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173", // frontend URL
+    origin: true, // Allow all origins for development
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 

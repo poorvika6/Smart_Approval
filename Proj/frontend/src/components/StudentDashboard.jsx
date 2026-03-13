@@ -68,7 +68,7 @@ const StudentDashboard = () => {
     
     const fetchFreshUser = async () => {
       try {
-        const res = await fetch(`https://smart-approval.onrender.com/api/auth/user/${user._id}`);
+        const res = await fetch(`http://localhost:5000/api/auth/user/${user._id}`);
         const data = await res.json();
         setUser(prev => ({ ...prev, ...data }));
         localStorage.setItem("user", JSON.stringify({ ...user, ...data }));
@@ -90,7 +90,7 @@ const StudentDashboard = () => {
 
     const checkStaff = async () => {
       try {
-        const res = await fetch(`https://smart-approval.onrender.com/api/admin/users?role=staff`);
+        const res = await fetch(`http://localhost:5000/api/admin/users?role=staff`);
         const data = await res.json();
         const staffInDept = (data || []).filter(s => s.department === user.department);
         setStaffAvailable(staffInDept.length > 0);
@@ -105,7 +105,7 @@ const StudentDashboard = () => {
 
   // Fetch general permission status
   useEffect(() => {
-    fetch("https://smart-approval.onrender.com/api/admin/general-permission")
+    fetch("http://localhost:5000/api/admin/general-permission")
       .then(res => res.json())
       .then(data => setGeneralPermissionEnabled(!!data.enabled))
       .catch(err => console.error(err));
@@ -115,7 +115,7 @@ const StudentDashboard = () => {
   const fetchStudentData = async () => {
     if (!user?._id) return;
     try {
-      const resLeaves = await fetch(`https://smart-approval.onrender.com/api/leave/student/${user._id}`);
+      const resLeaves = await fetch(`http://localhost:5000/api/leave/student/${user._id}`);
       const leaves = await resLeaves.json();
       setPendingRequests(leaves.filter(l => l.status === "pending"));
       setApprovedRequests(leaves.filter(l => l.status === "approved"));
@@ -226,7 +226,7 @@ const StudentDashboard = () => {
     };
 
     try {
-      const response = await fetch("https://smart-approval.onrender.com/api/leave/apply", {
+      const response = await fetch("http://localhost:5000/api/leave/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -261,7 +261,7 @@ const StudentDashboard = () => {
     };
 
     try {
-      const response = await fetch("https://smart-approval.onrender.com/api/leave/apply", {
+      const response = await fetch("http://localhost:5000/api/leave/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -381,7 +381,7 @@ const StudentDashboard = () => {
     };
 
     try {
-      const response = await fetch(`https://smart-approval.onrender.com/api/leave/${editingLeaveId}/edit`, {
+      const response = await fetch(`http://localhost:5000/api/leave/${editingLeaveId}/edit`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -413,7 +413,7 @@ const StudentDashboard = () => {
     }
 
     try {
-      const response = await fetch(`https://smart-approval.onrender.com/api/leave/${leaveId}`, {
+      const response = await fetch(`http://localhost:5000/api/leave/${leaveId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -433,7 +433,7 @@ const StudentDashboard = () => {
 
   const openLeaveDetails = async (leaveId) => {
     try {
-      const res = await fetch(`https://smart-approval.onrender.com/api/leave/details/${leaveId}`);
+      const res = await fetch(`http://localhost:5000/api/leave/details/${leaveId}`);
       const data = await res.json();
       setSelectedLeave(data);
     } catch (err) {
